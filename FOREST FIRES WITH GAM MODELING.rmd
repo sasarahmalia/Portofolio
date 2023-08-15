@@ -1,0 +1,262 @@
+---
+title: "R Notebook"
+output:
+  prettydoc::html_pretty:
+    theme: architect
+    highlight: github
+
+---
+```{r}
+library(ISLR)
+library(gam)
+library(leaps)
+library(skimr)
+library(dplyr)
+library(gbm)
+library(DataExplorer)
+library(glmnet)
+library(magrittr)
+library(mgcv)
+
+```
+
+
+
+```{r}
+setwd("C:/Users/LATHIFAH COMP/Downloads")
+ff <- read.csv("forestfires.csv")
+View(ff)
+```
+
+```{r}
+data(ff)
+str(ff)
+```
+
+# Data cleaning
+```{r}
+plot_intro(data = ff,
+           geom_label_args = list(size=2.5))
+```
+
+#GGPLOT Faktor
+```{r}
+library(ggplot2)
+ggplot(ff, aes(x=ISI, y=temp, color=ISI, group =ISI)) +
+        geom_boxplot(alpha=0.8, outlier.shape=NA) +
+        scale_color_gradient(low="#00AFBB", high="#FC4E07") +
+        labs(x="ISI", y="Temperature", color="ISI") +
+        theme_minimal() +
+        theme(panel.grid.major = element_line(color = "#EAEAEA"),
+              panel.grid.minor = element_blank(),
+              axis.line = element_line(colour = "#707070"),
+              text = element_text(size=12),
+              plot.title = element_text(size=14, face="bold"),
+              plot.background = element_rect(fill = "#F5F5F5"),
+              panel.background = element_rect(fill = "white"),
+              panel.border = element_rect(colour = "#707070", fill=NA),
+              panel.spacing = unit(1, "lines"),
+              axis.text = element_text(colour = "#707070"),
+              axis.title = element_text(colour = "#707070")) +
+        ggtitle("Temprature vs ISI")
+```
+```{r}
+ggplot(ff, aes(x=DC, y=temp, color=DC, group =DC)) +
+        geom_boxplot(alpha=0.8, outlier.shape=NA) +
+        scale_color_gradient(low="#00AFBB", high="#FC4E07") +
+        labs(x="DC", y="Temperature", color="DC") +
+        theme_minimal() +
+        theme(panel.grid.major = element_line(color = "#EAEAEA"),
+              panel.grid.minor = element_blank(),
+              axis.line = element_line(colour = "#707070"),
+              text = element_text(size=12),
+              plot.title = element_text(size=14, face="bold"),
+              plot.background = element_rect(fill = "#F5F5F5"),
+              panel.background = element_rect(fill = "white"),
+              panel.border = element_rect(colour = "#707070", fill=NA),
+              panel.spacing = unit(1, "lines"),
+              axis.text = element_text(colour = "#707070"),
+              axis.title = element_text(colour = "#707070")) +
+        ggtitle("Temprature vs DC")
+```
+
+```{r}
+ggplot(ff, aes(x=DMC, y=temp, color=DMC, group =DMC)) +
+        geom_boxplot(alpha=0.8, outlier.shape=NA) +
+        scale_color_gradient(low="#00AFBB", high="#FC4E07") +
+        labs(x="DMC", y="Temperature", color="DMC") +
+        theme_minimal() +
+        theme(panel.grid.major = element_line(color = "#EAEAEA"),
+              panel.grid.minor = element_blank(),
+              axis.line = element_line(colour = "#707070"),
+              text = element_text(size=12),
+              plot.title = element_text(size=14, face="bold"),
+              plot.background = element_rect(fill = "#F5F5F5"),
+              panel.background = element_rect(fill = "white"),
+              panel.border = element_rect(colour = "#707070", fill=NA),
+              panel.spacing = unit(1, "lines"),
+              axis.text = element_text(colour = "#707070"),
+              axis.title = element_text(colour = "#707070")) +
+        ggtitle("Temprature vs DMC")
+
+```
+
+```{r}
+ggplot(ff, aes(x=FFMC, y=temp, color=FFMC, group =FFMC)) +
+        geom_boxplot(alpha=0.8, outlier.shape=NA) +
+        scale_color_gradient(low="#00AFBB", high="#FC4E07") +
+        labs(x="FFMC", y="Temperature", color="FFMC") +
+        theme_minimal() +
+        theme(panel.grid.major = element_line(color = "#EAEAEA"),
+              panel.grid.minor = element_blank(),
+              axis.line = element_line(colour = "#707070"),
+              text = element_text(size=12),
+              plot.title = element_text(size=14, face="bold"),
+              plot.background = element_rect(fill = "#F5F5F5"),
+              panel.background = element_rect(fill = "white"),
+              panel.border = element_rect(colour = "#707070", fill=NA),
+              panel.spacing = unit(1, "lines"),
+              axis.text = element_text(colour = "#707070"),
+              axis.title = element_text(colour = "#707070")) +
+        ggtitle("Temprature vs FFMC")
+```
+
+```{r}
+ggplot(ff, aes(x=RH, y=temp, color=RH, group =RH)) +
+        geom_boxplot(alpha=0.8, outlier.shape=NA) +
+        scale_color_gradient(low="#00AFBB", high="#FC4E07") +
+        labs(x="RH", y="Temperature", color="RH") +
+        theme_minimal() +
+        theme(panel.grid.major = element_line(color = "#EAEAEA"),
+              panel.grid.minor = element_blank(),
+              axis.line = element_line(colour = "#707070"),
+              text = element_text(size=12),
+              plot.title = element_text(size=14, face="bold"),
+              plot.background = element_rect(fill = "#F5F5F5"),
+              panel.background = element_rect(fill = "white"),
+              panel.border = element_rect(colour = "#707070", fill=NA),
+              panel.spacing = unit(1, "lines"),
+              axis.text = element_text(colour = "#707070"),
+              axis.title = element_text(colour = "#707070")) +
+        ggtitle("Temprature vs RH")
+```
+
+
+
+## Skimming dataset
+```{r}
+skim_without_charts(ff)
+summary(ff)
+```
+
+# Hapus Kolom data yang tidak digunakan
+```{r}
+ff <- subset(ff, select = -c(X, Y, month, day, area))
+View(ff)
+```
+
+## Korelasi Plot
+```{r}
+plot_correlation(data = ff %>% select_if(is.numeric),type = c("all"), maxcat = 40L, title = "Korelasi")
+```
+
+## Splitting dataset
+```{r}
+set.seed(123)
+trainid <- sample(1:nrow(ff), nrow(ff)*0.6)
+train_set <- ff[trainid,]
+test_set <- ff[-trainid,]
+```
+
+```{r}
+fit <- regsubsets(temp ~., data= train_set, nvmax = 17, method = "forward")
+fit.summary <- summary(fit)
+fit.summary
+```
+
+```{r}
+forward_subset <- regsubsets(temp ~ ., data = train_set, nvmax = ncol(ff)-1, method = "forward")
+model_summary <- summary(forward_subset)
+
+plot_metric <- function(metric, yaxis_label, reverse = FALSE) {
+  plot(metric, xlab = "Number of Variables", ylab = yaxis_label, xaxt = "n", type = "l")
+  axis(side = 1, at = 1:length(metric))
+
+  if (reverse) {
+    metric_1se <- max(metric) - (sd(metric) / sqrt(length(metric)))
+    min_subset <- which(metric > metric_1se)
+  } else {
+    metric_1se <- min(metric) + (sd(metric) / sqrt(length(metric)))
+    min_subset <- which(metric < metric_1se)
+  }
+
+  abline(h = metric_1se, col = "red", lty = 2)
+  abline(v = min_subset[1], col = "green", lty = 2)
+}
+
+par(mfrow=c(1, 3))
+
+plot_metric(model_summary$cp, "Cp")
+plot_metric(model_summary$bic, "BIC")
+plot_metric(model_summary$adjr2, "Adjusted R2", reverse = TRUE)
+```
+
+
+```{r}
+gam_model <- gam(temp ~ s(FFMC) + s(DMC) + s(ISI) + s(DC), data = train_set)
+
+par(mfrow=c(2, 3))
+plot(gam_model, se=TRUE, col="blue")
+```
+
+```{r}
+calc_mse <- function(y, y_hat) {
+  return(mean((y - y_hat)^2))
+}
+
+calc_rmse <- function(y, y_hat) {
+  return(sqrt(calc_mse(y, y_hat)))
+}
+
+calc_r2 <- function(y, y_hat) {
+  y_bar <- mean(y)
+  rss <- sum((y - y_hat)^2)
+  tss <- sum((y - y_bar)^2)
+  return(1 - (rss / tss))
+}
+```
+
+d
+```{r}
+# Make predictions using test data
+y_hat <- predict(gam_model, newdata = test_set)
+
+# Calculate MSE
+mse <- calc_mse(test_set$temp, y_hat)
+print(paste("MSE:", mse))
+
+# Calculate RMSE
+rmse <- calc_rmse(test_set$temp, y_hat)
+print(paste("RMSE:", rmse))
+
+# Calculate R-squared
+r_squared <- calc_r2(test_set$temp, y_hat)
+print(paste("R-squared:", r_squared))
+```
+
+```{r}
+summary(gam_model)
+```
+
+```{r}
+# Evaluate the model performance
+mse <- mean((test_set$temp - y_hat)^2)
+rmse <- sqrt(mse)
+cat(rmse)
+```
+```{r}
+
+
+
+```
+
